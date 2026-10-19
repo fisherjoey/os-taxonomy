@@ -3,6 +3,8 @@
 An open, structured taxonomy of **what children learn** across the primary/elementary years — decomposed into fine-grained "micro-topics", wired into a prerequisite graph, and aligned to national curriculum standards. Produced by [Marble](https://withmarble.com).
 
 > **Version:** `v1` · **Topics:** 1,591 · **Prerequisite edges:** 3,225 · **Subjects:** 8
+>
+> **This fork** adds the Alberta K–12 curriculum: 32,544 outcomes across 223 curricula, and 2,334 topic links. See [Alberta curriculum](#alberta-curriculum-fork-addition).
 
 ## See it
 
@@ -46,6 +48,28 @@ All data lives in [`data/`](data/) as UTF-8 JSON. See [`schema/`](schema/) for J
 | [`data/clusters.json`](data/clusters.json) | Parent-friendly domain summaries. |
 | [`data/teaching-research.json`](data/teaching-research.json) | Teaching research joined by `topicId`, with explicit coverage and publication notes (~24 MB). |
 | [`data/manifest.json`](data/manifest.json) | Counts, per-subject breakdown, per-file checksums. |
+| [`data/alberta-alignments.json`](data/alberta-alignments.json) | Fork addition: links from topics to Alberta curriculum outcomes. See [Alberta curriculum](#alberta-curriculum-fork-addition). |
+
+## Alberta curriculum (fork addition)
+
+This fork adds every curriculum published on [new LearnAlberta](https://curriculum.learnalberta.ca/curriculum/en), Kindergarten to Grade 12, as 223 curricula with 32,544 outcomes. The slugs start with `ab-` in `curriculum-standards.json`. That covers the newer K–6 curricula, the draft 7–9 and 10 replacements (marked `[draft]` in the name), and the older Programs of Study still in use for most of junior and senior high, including CTS, fine arts and language courses.
+
+The outcomes ship as codes only, the same way NGSS does here. Alberta Education holds the copyright and does not license redistribution (see [PROVENANCE.md](PROVENANCE.md)). Codes follow the curriculum's own structure, so you can read them:
+
+- Newer curricula: `<course>-OI<n>-GQ<n>-LO<n>` (organizing idea, guiding question, learning outcome). `ab-mat:MAT3-OI1-GQ1-LO1` is Grade 3 math, first organizing idea.
+- Programs of Study: `<course>-T<n>-GO<n>-SO<n>` (topic, general outcome, specific outcome), stopping at the deepest level that exists. `ab-mat-hs:MAT1791-T1-GO1-SO1` is the first specific outcome in Math 10C.
+
+`data/alberta-alignments.json` links 1,369 of the 1,591 topics to Alberta outcomes, 2,334 links in all. Each link is `direct` (the outcome states the idea) or `partial` (it covers part of the idea or a close variant). The links sit in their own file rather than in `topics.json`, so this fork can keep pulling upstream changes without conflicts. Claude made the links by reading each topic against the full text of the matching grade K–9 outcomes. No teacher has reviewed them, so check before relying on one. About 220 topics have no Alberta link because Alberta doesn't teach the idea, for example most of medieval European history, entrepreneurship and the problem-solving process topics in math.
+
+To get the full outcome text on your own machine, or to rebuild after Alberta updates its curricula:
+
+```bash
+npm run alberta:fetch   # downloads all published curricula into .cache/alberta/ (gitignored)
+npm run alberta:build   # rewrites the ab-* records, writes .cache/alberta/outcomes.json, updates the manifest
+npm run validate
+```
+
+`.cache/alberta/outcomes.json` holds every outcome with its grade, context and knowledge, understanding and skills statements. Keep it local.
 
 ### A topic
 

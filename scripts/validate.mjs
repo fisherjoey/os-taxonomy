@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkSchema } from './check-schema.mjs';
 import { checkTeachingResearch } from './check-teaching-research.mjs';
 
 const DATA = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'data');
@@ -83,6 +84,22 @@ for (const t of topics.topics) {
   }
 }
 if (danglingRefs > 5) errors.push(`…and ${danglingRefs - 5} more unknown standard references`);
+
+// --- Alberta alignments (fork addition, kept out of topics.json) -----------
+if (manifest.files?.['alberta-alignments.json']) {
+  const ab = load('alberta-alignments.json');
+  const abSchema = JSON.parse(readFileSync(resolve(DATA, '..', 'schema', 'alberta-alignments.schema.json'), 'utf8'));
+  errors.push(...checkSchema(ab, abSchema, 'alberta-alignments'));
+  check(ab.alignmentCount === ab.alignments.length, `alberta-alignments: alignmentCount != length`);
+  const seenPairs = new Set();
+  for (const a of ab.alignments) {
+    check(topicIds.has(a.topicId), `alberta alignment references unknown topicId ${a.topicId}`);
+    check(standardKeys.has(a.standard), `alberta alignment references unknown standard ${a.standard}`);
+    const pair = `${a.topicId} ${a.standard}`;
+    if (seenPairs.has(pair)) errors.push(`duplicate alberta alignment ${pair}`);
+    seenPairs.add(pair);
+  }
+}
 
 // --- teaching research: schema, coverage and exact evidence links -----------
 const research = load('teaching-research.json');

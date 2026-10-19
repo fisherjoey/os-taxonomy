@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://withmarble.com/taxonomy/schema/alberta-alignments.schema.json",
+  "title": "Marble Skill Taxonomy — Alberta curriculum alignments",
+  "type": "object",
+  "required": ["version", "alignmentCount", "alignments"],
+  "properties": {
+    "version": { "type": "string" },
+    "note": { "type": "string" },
+    "method": { "type": "string" },
+    "curriculaRetrievedAt": { "type": "string", "format": "date-time" },
+    "alignmentCount": { "type": "integer", "minimum": 0 },
+    "alignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["topicId", "standard", "fit"],
+        "properties": {
+          "topicId": { "type": "string", "pattern": "^mt_" },
+          "standard": { "type": "string", "pattern": "^ab-" },
+          "fit": { "enum": ["direct", "partial"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

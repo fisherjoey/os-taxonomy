@@ -39,6 +39,12 @@ For encumbered sources we ship only the **standard code** (e.g. `1-ESS1-1`) and 
 - **License:** IB content is copyrighted and IBO is protective of it; redistribution requires explicit IB permission. This is the most restrictive source.
 - **We ship:** codes/keys only. Do not ship full text without IB permission.
 
+### 🔴 `ab-*` — Alberta K–12 curricula and Programs of Study — **codes only** (fork addition)
+- **Publisher / rights:** © Government of Alberta (Alberta Education), published on [new LearnAlberta](https://curriculum.learnalberta.ca/curriculum/en).
+- **License:** LearnAlberta's copyright notice says Crown-owned material may not be reproduced, modified or distributed without written permission from Alberta Education, apart from what its Terms of Use allow for non-profit educational use. The curricula are not published under the Open Government Licence – Alberta (only the curriculum fact sheets on open.alberta.ca are). Commercial use and permission requests go to the Copyright Coordinator, copyright.coordinator@gov.ab.ca.
+- **We ship:** codes/keys only, built by `scripts/alberta/build.mjs`. The codes are positional and made up for this dataset; Alberta does not publish codes at this level. `scripts/alberta/fetch.mjs` downloads the full text to a gitignored local cache for anyone who wants to read it under LearnAlberta's own terms.
+- **Topic links:** `data/alberta-alignments.json` holds only topic IDs, standard keys and a fit label, with no Alberta text.
+
 ## Teaching-research publication
 
 `data/teaching-research.json` contains Marble's agent-authored teaching research
