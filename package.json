@@ -10,6 +10,7 @@
     "validate": "node scripts/validate.mjs",
     "test": "node --test scripts/teaching-research.test.mjs",
     "alberta:fetch": "node scripts/alberta/fetch.mjs",
-    "alberta:build": "node scripts/alberta/build.mjs && node scripts/update-manifest.mjs"
+    "alberta:build": "node scripts/alberta/build.mjs && node scripts/update-manifest.mjs",
+    "alberta:viewer": "node scripts/alberta/viewer.mjs"
   }
 }

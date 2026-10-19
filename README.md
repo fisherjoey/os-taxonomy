@@ -71,6 +71,8 @@ npm run validate
 
 `.cache/alberta/outcomes.json` holds every outcome with its grade, context and knowledge, understanding and skills statements. Keep it local.
 
+`npm run alberta:viewer` builds a small browser for the links in `.cache/alberta/viewer/`. Serve that folder with any static server (`python3 -m http.server -d .cache/alberta/viewer`) on your own machine or a private network, since it contains the full Alberta text.
+
 ### A topic
 
 ```json

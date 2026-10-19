@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alberta Alignment Viewer</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1da;
+    --accent: #1f5fa8; --accent-soft: #e4edf8; --direct: #1e7a4c; --direct-soft: #e2f3ea;
+    --partial: #9a6a00; --partial-soft: #fbf0d6; --none: #a33a2c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151514; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9c9a92; --line: #33322f;
+      --accent: #7fb0ec; --accent-soft: #1d2b3c; --direct: #6fcf9c; --direct-soft: #17301f;
+      --partial: #e7b84d; --partial-soft: #352a12; --none: #ef8a7c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 20px 16px 0; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  nav button { background: none; border: 0; padding: 10px 14px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  nav button.on { color: var(--ink); border-color: var(--accent); font-weight: 600; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .stat b { display: block; font-size: 24px; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 80px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  select, input[type=search] { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+  input[type=search] { flex: 1; min-width: 200px; }
+  label.chk { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .key { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+  .ctx { color: var(--muted); font-size: 13px; }
+  .card h3 { font-size: 15px; margin: 4px 0; }
+  details { margin-top: 6px; font-size: 14px; }
+  details summary { cursor: pointer; color: var(--accent); }
+  details p { margin: 6px 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 13px; padding: 2px 8px; border-radius: 12px; border: 1px solid transparent; cursor: pointer; }
+  .chip.d { background: var(--direct-soft); color: var(--direct); }
+  .chip.p { background: var(--partial-soft); color: var(--partial); }
+  .tag { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; }
+  .none { color: var(--none); font-size: 13px; }
+  .count { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Alberta alignment viewer</h1>
+  <p class="sub" id="sub">Loading…</p>
+  <nav>
+    <button data-tab="overview" class="on">Overview</button>
+    <button data-tab="alberta">By Alberta outcome</button>
+    <button data-tab="topics">By topic</button>
+  </nav>
+</header>
+<main>
+  <section id="overview"></section>
+  <section id="alberta" class="hidden">
+    <div class="controls">
+      <select id="aCur"></select>
+      <select id="aGrade"><option value="">All grades</option></select>
+      <input type="search" id="aQ" placeholder="Search outcome text">
+      <label class="chk"><input type="checkbox" id="aUnlinked"> Only outcomes with no topic</label>
+    </div>
+    <div class="count" id="aCount"></div>
+    <div id="aList"></div>
+  </section>
+  <section id="topics" class="hidden">
+    <div class="controls">
+      <select id="tSub"><option value="">All subjects</option></select>
+      <input type="search" id="tQ" placeholder="Search topics">
+      <select id="tFilter"><option value="">All topics</option><option value="none">No Alberta link</option><option value="direct">Has a direct link</option><option value="partial">Partial links only</option></select>
+    </div>
+    <div class="count" id="tCount"></div>
+    <div id="tList"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const gradeOrder = (g) => (g === 'K' ? 0 : parseInt(g, 10) || 99);
+
+fetch('data.json').then((r) => r.json()).then(init);
+
+function init(D) {
+  const topicById = new Map(D.topics.map((t) => [t.id, t]));
+  const outByKey = new Map(D.outcomes.map((o) => [o.k, o]));
+  const curBySlug = new Map(D.curricula.map((c) => [c.slug, c]));
+  const byTopic = new Map(), byOutcome = new Map();
+  for (const [tid, key, direct] of D.links) {
+    (byTopic.get(tid) ?? byTopic.set(tid, []).get(tid)).push({ key, direct });
+    (byOutcome.get(key) ?? byOutcome.set(key, []).get(key)).push({ tid, direct });
+  }
+  const totalOutcomes = D.curricula.reduce((n, c) => n + c.count, 0);
+  $('sub').textContent = `${D.curricula.length} Alberta curricula · ${totalOutcomes.toLocaleString()} outcomes · ${D.links.length.toLocaleString()} links to ${byTopic.size.toLocaleString()} of ${D.topics.length.toLocaleString()} taxonomy topics`;
+
+  // Tabs
+  document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
+  function show(tab) {
+    document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x.dataset.tab === tab));
+    for (const id of ['overview', 'alberta', 'topics']) $(id).classList.toggle('hidden', id !== tab);
+  }
+
+  // Overview
+  const subjects = [...new Set(D.topics.map((t) => t.s))].sort();
+  const subRows = subjects.map((s) => {
+    const ts = D.topics.filter((t) => t.s === s);
+    const linked = ts.filter((t) => byTopic.has(t.id)).length;
+    return `<tr><td>${esc(s)}</td><td>${linked} / ${ts.length}</td><td><div class="bar"><i style="width:${(100 * linked / ts.length).toFixed(0)}%"></i></div></td></tr>`;
+  }).join('');
+  const linkCounts = {};
+  for (const [, key] of D.links) { const s = key.split(':')[0]; linkCounts[s] = (linkCounts[s] || 0) + 1; }
+  const curRows = Object.entries(linkCounts).sort((a, b) => b[1] - a[1]).map(([slug, n]) => {
+    const c = curBySlug.get(slug);
+    const touched = D.outcomes.filter((o) => o.k.startsWith(slug + ':') && byOutcome.has(o.k)).length;
+    return `<tr><td>${esc(c.name.replace(/^Alberta (Curriculum|Program of Studies): /, ''))}<div class="key">${slug}</div></td><td>${n}</td><td>${touched} / ${c.count}</td></tr>`;
+  }).join('');
+  const direct = D.links.filter((l) => l[2]).length;
+  $('overview').innerHTML = `
+    <div class="stats">
+      <div class="stat"><b>${D.curricula.length}</b><span>Alberta curricula, K–12</span></div>
+      <div class="stat"><b>${totalOutcomes.toLocaleString()}</b><span>outcomes (codes in the repo)</span></div>
+      <div class="stat"><b>${byTopic.size.toLocaleString()}</b><span>topics linked of ${D.topics.length.toLocaleString()}</span></div>
+      <div class="stat"><b>${D.links.length.toLocaleString()}</b><span>links · ${direct.toLocaleString()} direct</span></div>
+    </div>
+    <h2>Taxonomy topics with an Alberta link</h2>
+    <table><tr><th>Subject</th><th>Linked</th><th style="width:40%">Coverage</th></tr>${subRows}</table>
+    <h2>Links by Alberta curriculum</h2>
+    <table><tr><th>Curriculum</th><th>Links</th><th>Outcomes with ≥1 topic</th></tr>${curRows}</table>
+    <p class="sub" style="margin-top:12px">${D.curricula.filter((c) => !c.linked).length} more curricula (grades 10–12, CTS, arts, languages) are in the data as standards with no topic links, since the taxonomy stops at age 13.</p>`;
+
+  // By Alberta outcome
+  const linkedCur = D.curricula.filter((c) => c.linked).sort((a, b) => a.name.localeCompare(b.name));
+  $('aCur').innerHTML = linkedCur.map((c) => `<option value="${c.slug}">${esc(c.name.replace(/^Alberta (Curriculum|Program of Studies): /, ''))}</option>`).join('');
+  $('aCur').value = 'ab-mat';
+  const fillGrades = () => {
+    const grades = [...new Set(D.outcomes.filter((o) => o.k.startsWith($('aCur').value + ':')).map((o) => o.g))].sort((a, b) => gradeOrder(a) - gradeOrder(b));
+    $('aGrade').innerHTML = '<option value="">All grades</option>' + grades.map((g) => `<option>${g}</option>`).join('');
+  };
+  const chip = (tid, direct) => { const t = topicById.get(tid); return `<span class="chip ${direct ? 'd' : 'p'}" data-topic="${tid}" title="${esc(t.desc)}">${esc(t.n)} <small>${t.a[0]}–${t.a[1]}</small></span>`; };
+  function renderAlberta() {
+    const slug = $('aCur').value, g = $('aGrade').value, q = $('aQ').value.toLowerCase(), only = $('aUnlinked').checked;
+    const list = D.outcomes.filter((o) => o.k.startsWith(slug + ':') && (!g || o.g === g) && (!only || !byOutcome.has(o.k)) &&
+      (!q || [o.t, o.kn, o.u, o.s, ...o.c].join(' ').toLowerCase().includes(q)));
+    $('aCount').textContent = `${list.length} outcomes`;
+    $('aList').innerHTML = list.slice(0, 300).map((o) => {
+      const links = (byOutcome.get(o.k) || []).sort((a, b) => b.direct - a.direct);
+      return `<div class="card"><div class="key">${o.k}<span class="tag">Grade ${o.g}</span></div>
+        <div class="ctx">${o.c.map(esc).join(' › ')}</div><h3>${esc(o.t)}</h3>
+        ${o.kn || o.u || o.s ? `<details><summary>Knowledge, understanding, skills</summary>${o.kn ? `<p><b>Knowledge:</b> ${esc(o.kn)}</p>` : ''}${o.u ? `<p><b>Understanding:</b> ${esc(o.u)}</p>` : ''}${o.s ? `<p><b>Skills:</b> ${esc(o.s)}</p>` : ''}</details>` : ''}
+        <div class="chips">${links.length ? links.map((l) => chip(l.tid, l.direct)).join('') : '<span class="none">No taxonomy topic linked</span>'}</div></div>`;
+    }).join('');
+  }
+  $('aCur').addEventListener('change', () => { fillGrades(); renderAlberta(); });
+  for (const id of ['aGrade', 'aQ', 'aUnlinked']) $(id).addEventListener('input', renderAlberta);
+  fillGrades(); renderAlberta();
+
+  // By topic
+  $('tSub').innerHTML += subjects.map((s) => `<option>${esc(s)}</option>`).join('');
+  function renderTopics() {
+    const s = $('tSub').value, q = $('tQ').value.toLowerCase(), f = $('tFilter').value;
+    const list = D.topics.filter((t) => {
+      const ls = byTopic.get(t.id) || [];
+      if (s && t.s !== s) return false;
+      if (q && !(t.n + ' ' + t.desc + ' ' + t.d).toLowerCase().includes(q)) return false;
+      if (f === 'none') return !ls.length;
+      if (f === 'direct') return ls.some((l) => l.direct);
+      if (f === 'partial') return ls.length && !ls.some((l) => l.direct);
+      return true;
+    });
+    $('tCount').textContent = `${list.length} topics`;
+    $('tList').innerHTML = list.slice(0, 300).map((t) => {
+      const ls = (byTopic.get(t.id) || []).sort((a, b) => b.direct - a.direct);
+      const rows = ls.map((l) => {
+        const o = outByKey.get(l.key);
+        return `<div style="margin-top:8px"><span class="chip ${l.direct ? 'd' : 'p'}">${l.direct ? 'direct' : 'partial'}</span> <span class="key">${l.key}</span><span class="tag">Grade ${o?.g ?? '?'}</span><div>${esc(o?.t ?? '')}</div></div>`;
+      }).join('');
+      return `<div class="card" id="t-${t.id}"><div class="key">${t.id} · ${esc(t.s)} › ${esc(t.d)} · age ${t.a[0]}–${t.a[1]}</div>
+        <h3>${esc(t.n)}</h3><div class="ctx">${esc(t.desc)}</div>${rows || '<div class="none" style="margin-top:8px">No Alberta outcome teaches this</div>'}</div>`;
+    }).join('');
+  }
+  for (const id of ['tSub', 'tQ', 'tFilter']) $(id).addEventListener('input', renderTopics);
+  renderTopics();
+
+  // Clicking a topic chip jumps to that topic.
+  document.addEventListener('click', (e) => {
+    const c = e.target.closest('[data-topic]'); if (!c) return;
+    const t = topicById.get(c.dataset.topic);
+    $('tSub').value = ''; $('tFilter').value = ''; $('tQ').value = t.n; renderTopics(); show('topics');
+    window.scrollTo(0, 0);
+  });
+}
+</script>
+</body>
+</html>
