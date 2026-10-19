@@ -71,7 +71,7 @@ npm run validate
 
 `.cache/alberta/outcomes.json` holds every outcome with its grade, context and knowledge, understanding and skills statements. Keep it local.
 
-`npm run alberta:viewer` builds a small browser for the links in `.cache/alberta/viewer/`: tables by outcome and by topic, plus `graph.html`, a 3D prerequisite graph (height is age) that lights up the topics a chosen Alberta curriculum and grade teach. Serve that folder with any static server (`python3 -m http.server -d .cache/alberta/viewer`) on your own machine or a private network, since it contains the full Alberta text.
+`npm run alberta:viewer` builds a small browser for the links in `.cache/alberta/viewer/`: tables by outcome and by topic, plus `graph.html`, a 3D graph with Alberta grade (K–12) as height. It shows Marble topics and core-subject Alberta outcomes together and lights up whatever a chosen Alberta curriculum and grade teach. Serve that folder with any static server (`python3 -m http.server -d .cache/alberta/viewer`) on your own machine or a private network, since it contains the full Alberta text.
 
 ### A topic
 

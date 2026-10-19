@@ -24,13 +24,16 @@ const alignments = load('data', 'alberta-alignments.json').alignments;
 const outcomes = load('.cache', 'alberta', 'outcomes.json');
 const curricula = load('data', 'curriculum-standards.json').curricula.filter((c) => c.slug.startsWith('ab-'));
 
-// Ship full text for every curriculum that has at least one link; the rest only as counts.
+// Ship full text for every curriculum that has at least one link, plus the core K–12 subjects
+// so the graph can reach Grade 12; the rest only as counts.
 const linkedSlugs = new Set(alignments.map((a) => a.standard.split(':')[0]));
+const CORE = /^ab-(mat|mat-79|mat-7-9|mat-hs|matcal|laneng|laneng-79|laneng-hs|sci|sci-7-9|scigen-79|scigen-10|scigen-14-24|scigen-20-30|scibio-20-30|scicem-20-30|sciphy-20-30|sss|sss-7-9|sssgen-79|sssgen-hs|pde|pde-7-9|pde-10-12|pdephy|health-79|cefl|calm|pdeclm)$/;
+const shipped = (slug) => linkedSlugs.has(slug) || CORE.test(slug);
 const data = {
   builtAt: new Date().toISOString(),
   curricula: curricula.map((c) => ({ slug: c.slug, name: c.name, count: c.topicCount, linked: linkedSlugs.has(c.slug) })),
   outcomes: outcomes
-    .filter((o) => linkedSlugs.has(o.slug))
+    .filter((o) => shipped(o.slug))
     .map((o) => ({ k: o.key, g: o.grades.join(','), c: o.context.filter(Boolean), t: o.text, kn: o.knowledge, u: o.understanding, s: o.skills })),
   topics: topics.map((t) => ({ id: t.id, n: t.name, s: t.subject, d: t.domain, a: [t.ageRangeStart, t.ageRangeEnd], desc: t.description })),
   links: alignments.map((a) => [a.topicId, a.standard, a.fit === 'direct' ? 1 : 0]),
