@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alberta Learning Graph</title>
+<style>
+  :root { --bg: #0b0c12; --ink: #eceaf2; --muted: #8b8aa0; --panel: rgba(20, 21, 31, 0.86); --line: #2a2b3a; --hi: #ffd166; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #graph { position: fixed; inset: 0; }
+  .ui { position: fixed; z-index: 2; }
+  #title { top: 24px; left: 24px; max-width: 380px; pointer-events: none; }
+  #title .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  #title .eyebrow b { color: #e5484d; }
+  #title h1 { font: 400 44px/1.05 Georgia, "Times New Roman", serif; margin: 10px 0 12px; }
+  #title p { margin: 0; color: var(--muted); }
+  #title p b { color: var(--ink); }
+  #lens { top: 24px; right: 24px; width: 300px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  #lens label { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 8px 0 4px; }
+  #lens label:first-child { margin-top: 0; }
+  select { width: 100%; font: inherit; color: var(--ink); background: #151622; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  #lensNote { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #legend { left: 24px; bottom: 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 230px; }
+  #legend .h { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  #legend div.row { display: flex; align-items: center; gap: 8px; padding: 2px 0; cursor: pointer; user-select: none; }
+  #legend div.row.off { opacity: .35; }
+  #legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  #legend span.n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #panel { right: 24px; bottom: 24px; width: 360px; max-height: 55vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: none; }
+  #panel h2 { font-size: 17px; margin: 2px 0 6px; }
+  #panel .meta { color: var(--muted); font-size: 12px; }
+  #panel .out { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; font-size: 13px; }
+  #panel .fit { font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 6px; }
+  #panel .fit.d { background: #17301f; color: #6fcf9c; }
+  #panel .fit.p { background: #352a12; color: #e7b84d; }
+  #panel .key { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); }
+  #panel button { float: right; background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; }
+  #hint { right: 24px; bottom: 8px; color: var(--muted); font-size: 11px; }
+  #hint b { color: var(--ink); font-weight: 600; }
+  a.back { color: var(--muted); font-size: 12px; pointer-events: auto; }
+  @media (max-width: 760px) {
+    #title { left: 16px; top: 16px; max-width: calc(100% - 32px); }
+    #title h1 { font-size: 30px; }
+    #lens { top: auto; bottom: 16px; right: 16px; left: 16px; width: auto; }
+    #legend { display: none; }
+    #panel { left: 16px; right: 16px; width: auto; bottom: 150px; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="title" class="ui">
+  <div class="eyebrow"><b>●</b> Alberta curriculum · ages 4–13</div>
+  <h1>What an Alberta child learns.</h1>
+  <p id="stats">Loading…</p>
+  <p style="margin-top:8px"><a class="back" href="./">← table viewer</a></p>
+</div>
+<div id="lens" class="ui">
+  <label for="mode">Colour by</label>
+  <select id="mode">
+    <option value="subject">Subject</option>
+    <option value="coverage">Alberta coverage</option>
+    <option value="curriculum">One Alberta curriculum</option>
+  </select>
+  <div id="curPick" style="display:none">
+    <label for="cur">Curriculum</label><select id="cur"></select>
+    <label for="grade">Grade</label><select id="grade"></select>
+  </div>
+  <div id="lensNote"></div>
+</div>
+<div id="legend" class="ui"></div>
+<div id="panel" class="ui"></div>
+<div id="hint" class="ui"><b>Drag</b> to spin · <b>Scroll</b> to zoom · <b>Tap</b> a dot to trace its prerequisites</div>
+
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.0/dist/3d-force-graph.min.js" integrity="sha384-Y7bC2PBKu8ujxtvo5+Z61OeGdSVRzFsYWBK4i5dnL/U6aFDTodk61qOUkTfInaxS" crossorigin="anonymous"></script>
+<script>
+const SUBJECT_COLORS = {
+  Mathematics: '#5b7cfa', Science: '#2fd39a', English: '#ff5a8a', History: '#ffa94d',
+  'Personal & Social Development': '#b07cff', 'Life Skills': '#45c8f0', Computing: '#f5e663', 'Learning to Learn': '#ff7a59',
+};
+const DIM = '#262838', HI = '#ffd166';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const gradeOrder = (g) => (g === 'K' ? 0 : parseInt(g, 10) || 99);
+const shortName = (n) => n.replace(/^Alberta (Curriculum|Program of Studies): /, '');
+
+fetch('data.json').then((r) => r.json()).then(init);
+
+function init(D) {
+  const outByKey = new Map(D.outcomes.map((o) => [o.k, o]));
+  const linksByTopic = new Map();
+  for (const [tid, key, direct] of D.links) (linksByTopic.get(tid) ?? linksByTopic.set(tid, []).get(tid)).push({ key, direct });
+
+  // Stable per-topic offset so topics sharing an age don't stack into flat sheets.
+  const jitter = (id) => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0; return ((h % 1000) / 1000) * 40; };
+  // Height is age: youngest topics at the bottom, as in Marble's original.
+  const nodes = D.topics.map((t) => {
+    const age = ((t.a[0] ?? 8) + (t.a[1] ?? t.a[0] ?? 8)) / 2;
+    return { ...t, age, fy: (age - 8.5) * 80 + jitter(t.id), val: 1 + Math.min(2, (linksByTopic.get(t.id)?.length ?? 0) * 0.3) };
+  });
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const links = D.deps.filter(([t, p]) => byId.has(t) && byId.has(p)).map(([t, p, hard]) => ({ source: p, target: t, hard }));
+  const prereqs = new Map();
+  for (const l of links) (prereqs.get(l.target) ?? prereqs.set(l.target, []).get(l.target)).push(l.source);
+
+  const linkedCount = nodes.filter((n) => linksByTopic.has(n.id)).length;
+  document.getElementById('stats').innerHTML =
+    `<b>${nodes.length.toLocaleString()}</b> concepts and <b>${links.length.toLocaleString()}</b> prerequisite links. ` +
+    `<b>${linkedCount.toLocaleString()}</b> are taught somewhere in Alberta's K–9 curriculum.`;
+
+  // --- state
+  const hidden = new Set();
+  let mode = 'subject', lensKeys = null, selected = null, chain = new Set(), chainLinks = new Set();
+
+  const isLit = (n) => {
+    if (selected) return chain.has(n.id);
+    if (mode === 'coverage') return linksByTopic.has(n.id);
+    if (mode === 'curriculum') return (linksByTopic.get(n.id) || []).some((l) => lensKeys.has(l.key));
+    return true;
+  };
+  const nodeColor = (n) => {
+    if (selected && n.id === selected.id) return '#ffffff';
+    if (!isLit(n)) return DIM;
+    if (mode === 'curriculum' && !selected) return HI;
+    return SUBJECT_COLORS[n.s] || '#cccccc';
+  };
+  const linkColor = (l) => {
+    if (selected) return chainLinks.has(l) ? 'rgba(255,255,255,0.75)' : 'rgba(120,120,160,0.03)';
+    return 'rgba(150,150,200,0.10)';
+  };
+
+  const Graph = ForceGraph3D()(document.getElementById('graph'))
+    .backgroundColor('#0b0c12')
+    .graphData({ nodes, links })
+    .nodeId('id')
+    .nodeLabel((n) => `<div style="background:#151622;padding:4px 8px;border-radius:6px;border:1px solid #2a2b3a"><b>${esc(n.n)}</b><br><span style="color:#8b8aa0">${esc(n.s)} · age ${n.a[0]}–${n.a[1]}</span></div>`)
+    .nodeColor(nodeColor)
+    .nodeVal('val')
+    .nodeRelSize(2.2)
+    .showNavInfo(false)
+    .nodeOpacity(0.95)
+    .nodeResolution(10)
+    .nodeVisibility((n) => !hidden.has(n.s))
+    .linkVisibility((l) => !hidden.has(l.source.s ?? byId.get(l.source)?.s) && !hidden.has(l.target.s ?? byId.get(l.target)?.s))
+    .linkColor(linkColor)
+    .linkWidth((l) => (selected && chainLinks.has(l) ? 0.6 : 0))
+    .linkDirectionalParticles((l) => (selected && chainLinks.has(l) ? 2 : 0))
+    .linkDirectionalParticleWidth(1.2)
+    .linkDirectionalParticleSpeed(0.006)
+    .onNodeClick(select)
+    .onBackgroundClick(() => select(null));
+  window.graph = Graph; // handy from the console
+  Graph.d3Force('charge').strength(-8);
+  Graph.d3Force('link').distance(14).strength(0.2);
+  // Pull everything toward the vertical axis so the graph reads as a column, youngest at the bottom.
+  let simNodes = [];
+  const column = (alpha) => { for (const n of simNodes) { n.vx -= n.x * 0.09 * alpha; n.vz -= n.z * 0.09 * alpha; } };
+  column.initialize = (ns) => { simNodes = ns; };
+  Graph.d3Force('column', column);
+  Graph.cameraPosition({ x: 0, y: 0, z: 900 });
+
+  // Slow spin until someone touches it.
+  let angle = 0, spinning = true;
+  const spin = setInterval(() => {
+    if (!spinning) return;
+    angle += 0.0025;
+    Graph.cameraPosition({ x: 900 * Math.sin(angle), y: 0, z: 900 * Math.cos(angle) }, { x: 0, y: 0, z: 0 });
+  }, 30);
+  document.getElementById('graph').addEventListener('pointerdown', () => { spinning = false; clearInterval(spin); }, { once: true });
+
+  const refresh = () => Graph.nodeColor(nodeColor).linkColor(linkColor).linkWidth(Graph.linkWidth()).linkDirectionalParticles(Graph.linkDirectionalParticles());
+
+  function select(n) {
+    selected = n; chain = new Set(); chainLinks = new Set();
+    const panel = document.getElementById('panel');
+    if (!n) { panel.style.display = 'none'; refresh(); return; }
+    // Everything a learner must master before this topic: walk prerequisites transitively.
+    const stack = [n.id];
+    while (stack.length) { const id = stack.pop(); if (chain.has(id)) continue; chain.add(id); stack.push(...(prereqs.get(id) || [])); }
+    for (const l of links) if (chain.has(l.source.id ?? l.source) && chain.has(l.target.id ?? l.target)) chainLinks.add(l);
+    refresh();
+    const ls = (linksByTopic.get(n.id) || []).sort((a, b) => b.direct - a.direct);
+    panel.innerHTML = `<button aria-label="Close" onclick="document.getElementById('panel').style.display='none'">×</button>
+      <div class="meta">${esc(n.s)} › ${esc(n.d)} · age ${n.a[0]}–${n.a[1]}</div>
+      <h2>${esc(n.n)}</h2><div class="meta">${esc(n.desc)}</div>
+      <div class="meta" style="margin-top:6px">${chain.size - 1} concepts to master first (lit in the graph)</div>
+      ${ls.length ? ls.map((l) => { const o = outByKey.get(l.key); return `<div class="out"><span class="fit ${l.direct ? 'd' : 'p'}">${l.direct ? 'direct' : 'partial'}</span><span class="key">${l.key} · Grade ${o?.g ?? '?'}</span><div>${esc(o?.t ?? '')}</div></div>`; }).join('')
+        : '<div class="out" style="color:#ef8a7c">No Alberta outcome teaches this.</div>'}`;
+    panel.style.display = 'block';
+    const dist = 140, r = Math.hypot(n.x, n.y, n.z) || 1;
+    Graph.cameraPosition({ x: n.x * (1 + dist / r), y: n.y * (1 + dist / r), z: n.z * (1 + dist / r) }, n, 1200);
+  }
+
+  // --- legend (click to hide a subject)
+  const subjects = Object.keys(SUBJECT_COLORS).filter((s) => nodes.some((n) => n.s === s));
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '<div class="h">Subjects · click to toggle</div>' + subjects.map((s) =>
+    `<div class="row" data-s="${esc(s)}"><i style="background:${SUBJECT_COLORS[s]}"></i>${esc(s)}<span class="n">${nodes.filter((n) => n.s === s).length}</span></div>`).join('');
+  legend.addEventListener('click', (e) => {
+    const row = e.target.closest('.row'); if (!row) return;
+    const s = row.dataset.s; hidden.has(s) ? hidden.delete(s) : hidden.add(s); row.classList.toggle('off');
+    Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility());
+  });
+
+  // --- Alberta lens
+  const linkedSlugs = [...new Set(D.links.map((l) => l[1].split(':')[0]))];
+  const curOptions = D.curricula.filter((c) => linkedSlugs.includes(c.slug)).sort((a, b) => shortName(a.name).localeCompare(shortName(b.name)));
+  const $ = (id) => document.getElementById(id);
+  $('cur').innerHTML = curOptions.map((c) => `<option value="${c.slug}">${esc(shortName(c.name))}</option>`).join('');
+  $('cur').value = 'ab-mat';
+  const fillGrades = () => {
+    const gs = [...new Set(D.outcomes.filter((o) => o.k.startsWith($('cur').value + ':')).map((o) => o.g))].sort((a, b) => gradeOrder(a) - gradeOrder(b));
+    $('grade').innerHTML = '<option value="">All grades</option>' + gs.map((g) => `<option>${g}</option>`).join('');
+  };
+  function applyLens() {
+    mode = $('mode').value;
+    $('curPick').style.display = mode === 'curriculum' ? 'block' : 'none';
+    if (mode === 'curriculum') {
+      const slug = $('cur').value, g = $('grade').value;
+      lensKeys = new Set(D.outcomes.filter((o) => o.k.startsWith(slug + ':') && (!g || o.g === g)).map((o) => o.k));
+      const lit = nodes.filter(isLit).length;
+      $('lensNote').textContent = `${lit} taxonomy topics are taught by ${lensKeys.size} outcomes in ${shortName(curOptions.find((c) => c.slug === slug).name)}${g ? `, Grade ${g}` : ''}.`;
+    } else if (mode === 'coverage') {
+      $('lensNote').textContent = `${linkedCount} topics have an Alberta link; ${nodes.length - linkedCount} grey ones have none.`;
+    } else $('lensNote').textContent = '';
+    select(null);
+  }
+  $('mode').addEventListener('change', applyLens);
+  $('cur').addEventListener('change', () => { fillGrades(); applyLens(); });
+  $('grade').addEventListener('change', applyLens);
+  fillGrades();
+}
+</script>
+</body>
+</html>
